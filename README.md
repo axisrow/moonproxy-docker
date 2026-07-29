@@ -1,348 +1,61 @@
-# MoonProxy Docker 🚀
+# Moon Bridge Z.ai proxy for Claude Code
 
-Сервис для проксирования запросов к LLM API с управлением токенами и единым IP-адресом.
+Docker deployment of the pinned [Moon Bridge](https://github.com/ZhiYi-R/moon-bridge) source for Claude Code. It runs Moon Bridge in `CaptureAnthropic` mode: Claude Code sends requests to this proxy with a disposable local value, and the proxy replaces it with the Z.ai key stored only on the Docker host.
 
-## 🎯 Особенности
+## Security boundary
 
-- **🔒 Безопасность**: Храните реальные API ключи только на сервере
-- **🎛️ Управление токенами**: Создавайте и отслеживайте отдельные токены для разных проектов
-- **🌍 Единый IP**: Все запросы идут через один адрес
-- **📊 Мониторинг**: Отслеживайте использование токенов
-- **🔄 Множество провайдеров**: OpenAI, Anthropic, OpenRouter и другие
-- **🐳 Простой Docker**: Быстрое развертывание одной командой
+This repository is configured for the explicitly requested **unauthenticated test setup**. Docker publishes `38440` on all interfaces. Anyone who can reach this port can spend the Z.ai account behind it. Do not expose it on an untrusted network. `CaptureAnthropic` does not enforce Moon Bridge's console token on proxied requests, so production access control must be provided by localhost binding, a firewall/VPN, or an authenticated reverse proxy with TLS.
 
-## ⚡ Быстрый старт
+The actual Z.ai secret is stored only in `config/config.yml`, which Git ignores. The key configured in Claude Code is a non-secret placeholder required by the Claude API-key client mode.
 
-### Вариант 1: Автоматический запуск (рекомендуется)
+## Start
 
 ```bash
-chmod +x start.sh
-./start.sh
-```
-
-Скрипт автоматически:
-- Проверит зависимости
-- Создаст необходимую структуру директорий
-- Сгенерирует безопасные пароли
-- Соберёт и запустит Docker контейнеры
-- Проверит работоспособность
-
-### Вариант 2: Ручной запуск
-
-```bash
-# Создание директорий
 make init
-
-# Запуск сервиса
+# Edit config/config.yml and replace REPLACE_WITH_YOUR_ZAI_API_KEY.
 make up
-
-# Проверка здоровья
 make health
 ```
 
-## 📖 Использование
+`./start.sh` performs the same guarded setup: it creates the local configuration template and refuses to start while the placeholder key remains.
 
-### 1️⃣ Создание токена
+## Native Claude Code configuration
 
-**Автоматический способ:**
-
-```bash
-python create_token.py --provider openai --api-key sk-your-key --model gpt-4
-```
-
-**Ручной способ:**
+Configure the host that runs Claude Code, not the container. Replace `PROXY_HOST` with the Docker host address (`localhost` on the same machine).
 
 ```bash
-curl -X POST http://localhost:8000/admin/create-token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "provider": "openai",
-    "api_key": "sk-your-key",
-    "model": "gpt-4"
-  }' \
-  --data-urlencode "admin_password=YOUR_ADMIN_PASSWORD"
+export ANTHROPIC_BASE_URL="http://PROXY_HOST:38440"
+export ANTHROPIC_API_KEY="moonbridge-local-placeholder"
+claude --model glm-4.7-flash
 ```
 
-**Пример ответа:**
+`ANTHROPIC_API_KEY` must be non-empty so Claude Code selects API-key mode, but it is never forwarded upstream. Moon Bridge removes incoming credentials and sends `proxy.anthropic.api_key` from `config/config.yml` as `x-api-key` to `https://api.z.ai/api/anthropic/v1/messages`.
 
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_id": "abc123...",
-  "provider": "openai",
-  "model": "gpt-4",
-  "created_at": "2024-01-15T10:30:00"
-}
-```
+Choose a different available Z.ai model with `claude --model ...`; Capture mode preserves the requested model name.
 
-### 2️⃣ Использование токена
-
-**Python:**
-
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:8000/v1/chat/completions",
-    headers={
-        "Authorization": f"Bearer {YOUR_TOKEN}",
-        "Content-Type": "application/json"
-    },
-    json={
-        "model": "gpt-4",
-        "messages": [
-            {"role": "user", "content": "Hello!"}
-        ]
-    }
-)
-
-print(response.json())
-```
-
-**JavaScript/Node.js:**
-
-```javascript
-const response = await fetch('http://localhost:8000/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${YOUR_TOKEN}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    model: 'gpt-4',
-    messages: [
-      { role: 'user', content: 'Hello!' }
-    ]
-  })
-});
-
-const data = await response.json();
-console.log(data);
-```
-
-### 3️⃣ Управление токенами
-
-**Просмотр списка:**
+## Operations
 
 ```bash
-curl "http://localhost:8000/admin/list-tokens?admin_password=YOUR_PASSWORD"
+make build     # build from the pinned Moon Bridge submodule
+make logs      # follow container logs
+make ps        # container status
+make restart   # restart after changing config/config.yml
+make down      # stop container
+make test      # upstream tests for credential replacement and SSE proxying
 ```
 
-**Удаление токена:**
+The Moon Bridge source is a Git submodule pinned to a specific commit. Initialise it after a fresh clone:
 
 ```bash
-curl -X DELETE "http://localhost:8000/admin/delete-token/TOKEN_ID?admin_password=YOUR_PASSWORD"
+git submodule update --init --recursive
 ```
 
-## 🔧 Поддерживаемые провайдеры
+## Configuration
 
-| Провайдер | Параметр `provider` | Пример endpoint |
-|-----------|---------------------|-----------------|
-| OpenAI | `openai` | `https://api.openai.com/v1/chat/completions` |
-| Anthropic | `anthropic` | `https://api.anthropic.com/v1/messages` |
-| OpenRouter | `openrouter` | `https://openrouter.ai/api/v1/chat/completions` |
-| Кастомный | Любое значение | Укажите `endpoint` при создании токена |
+Only `config/config.example.yml` is committed. Create `config/config.yml` with `make init` and set:
 
-## 🛠️ Команды управления
+- `proxy.anthropic.api_key`: real Z.ai API key;
+- `proxy.anthropic.base_url`: Z.ai's Anthropic-compatible base URL;
+- `proxy.anthropic.version`: API version expected by the upstream.
 
-```bash
-make help          # Показать все команды
-make up            # Запустить сервисы
-make down          # Остановить сервисы
-make restart       # Перезапустить сервисы
-make logs          # Посмотреть логи
-make health        # Проверить здоровье сервиса
-make clean         # Полная очистка
-make build         # Пересобрать образы
-```
-
-## 📁 Структура проекта
-
-```
-moonproxy_docker/
-├── main.py              # Основное приложение FastAPI
-├── Dockerfile           # Docker конфигурация
-├── docker-compose.yml   # Docker Compose конфигурация
-├── requirements.txt     # Python зависимости
-├── create_token.py      # Скрипт для создания токенов
-├── example_client.py    # Пример использования клиента
-├── test_moonproxy.py    # Тестовый скрипт
-├── start.sh            # Скрипт быстрого старта
-├── Makefile            # Команды управления
-├── .env.example        # Пример переменных окружения
-├── README.md           # Эта документация
-├── FAQ.md              # Часто задаваемые вопросы
-├── data/               # Директория для данных (создаётся автоматически)
-└── config/             # Директория для конфигов (создаётся автоматически)
-```
-
-## 🔐 Безопасность в продакшене
-
-### ✅ Обязательно сделайте:
-
-1. **Измените дефолтные пароли** в `.env`:
-   ```bash
-   MOONPROXY_SECRET_KEY=your-very-long-and-secure-secret-key
-   MOONPROXY_ADMIN_PASSWORD=your-secure-admin-password
-   ```
-
-2. **Ограничьте доступ** к API:
-   - Используйте firewall
-   - Настройте reverse proxy с авторизацией
-   - Ограничьте доступ по IP
-
-3. **Используйте HTTPS** в продакшене:
-   - Настройте SSL/TLS сертификаты
-   - Используйте reverse proxy (Nginx, Caddy)
-
-4. **Регулярно бэкапьте** данные из директории `data/`
-
-### ⚠️ Никогда не:
-
-- Не храните `.env` файл в git репозитории
-- Не используйте дефолтные пароли в продакшене
-- Не открывайте API всему интернету без защиты
-- Не передавайте токены через незащищённые каналы
-
-## 🧪 Тестирование
-
-```bash
-# Запуск всех тестов
-python test_moonproxy.py
-
-# Пример использования клиента
-python example_client.py
-```
-
-## 📚 Дополнительная документация
-
-- **[FAQ.md](FAQ.md)** - Часто задаваемые вопросы
-- **[.env.example](.env.example)** - Пример конфигурации
-- **[example_client.py](example_client.py)** - Примеры кода
-
-## 🐛 Troubleshooting
-
-### Сервис не запускается
-
-```bash
-# Проверьте логи
-make logs
-
-# Перезапустите сервис
-make restart
-
-# Полная пересборка
-make down
-make build
-make up
-```
-
-### Проблемы с доступом
-
-```bash
-# Проверьте, работает ли сервис
-curl http://localhost:8000/health
-
-# Проверьте порты
-docker ps
-```
-
-### Ошибка "Invalid token"
-
-1. Проверьте срок действия токена (1 год)
-2. Убедитесь, что `MOONPROXY_SECRET_KEY` не изменялся
-3. Создайте новый токен
-
-## 🔄 Обновление
-
-```bash
-# Остановка сервиса
-make down
-
-# Обновление кода
-git pull
-
-# Пересборка и запуск
-make build
-make up
-```
-
-## 📊 Мониторинг
-
-### Health check
-
-```bash
-curl http://localhost:8000/health
-```
-
-**Пример ответа:**
-
-```json
-{
-  "status": "healthy",
-  "tokens_count": 5,
-  "timestamp": "2024-01-15T12:00:00"
-}
-```
-
-### Просмотр логов
-
-```bash
-# Все логи
-make logs
-
-# Только ошибки
-docker-compose logs moonproxy | grep ERROR
-```
-
-## 🤝 Интеграция с проектами
-
-### Быстрая замена в существующем проекте
-
-**Было:**
-```python
-response = requests.post(
-    "https://api.openai.com/v1/chat/completions",
-    headers={"Authorization": f"Bearer sk-your-openai-key"},
-    json={...}
-)
-```
-
-**Стало:**
-```python
-response = requests.post(
-    "http://localhost:8000/v1/chat/completions",
-    headers={"Authorization": f"Bearer {MOONPROXY_TOKEN}"},
-    json={...}
-)
-```
-
-### Множественные проекты
-
-```bash
-# Проект 1 (OpenAI)
-python create_token.py --provider openai --api-key sk-... --model gpt-4
-
-# Проект 2 (Anthropic)
-python create_token.py --provider anthropic --api-key sk-ant-...
-
-# Проект 3 (OpenRouter)
-python create_token.py --provider openrouter --api-key sk-or-...
-```
-
-## 📝 Лицензия
-
-MIT License
-
-## 🙏 Поддержка
-
-Если у вас есть вопросы или проблемы:
-
-1. Проверьте [FAQ.md](FAQ.md)
-2. Посмотрите логи: `make logs`
-3. Запустите тесты: `python test_moonproxy.py`
-4. Изучите примеры в `example_client.py`
-
----
-
-**Создано с ❤️ для удобного управления LLM API**
+Restart the service after changes: `make restart`.

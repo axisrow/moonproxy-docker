@@ -1,0 +1,4 @@
+[submodule "moon-bridge"]
+	path = moon-bridge
+	url = https://github.com/ZhiYi-R/moon-bridge.git
+	branch = main

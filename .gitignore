@@ -1,16 +1,15 @@
-# MoonProxy данные
+# Local Moon Bridge configuration and runtime state
+config/config.yml
 data/
-*.db
-*.sqlite
-*.sqlite3
+logs/
+trace/
 
-# Environment
+# Legacy MoonProxy state; never commit credentials from an old installation.
 .env
+.admin_password
 
-# Python
+# Local tooling
 __pycache__/
 *.pyc
-
-# IDE
 .vscode/
 .idea/

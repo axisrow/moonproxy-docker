@@ -1,0 +1,10 @@
+.git
+.gitmodules
+.claude
+CLAUDE.md
+config/config.yml
+data
+logs
+trace
+__pycache__
+*.pyc

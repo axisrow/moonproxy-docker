@@ -1,22 +1,19 @@
-FROM python:3.12-slim
+FROM golang:1.26-bookworm AS builder
+
+WORKDIR /src
+
+COPY moon-bridge/go.mod moon-bridge/go.sum ./
+RUN go mod download
+
+COPY moon-bridge/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/moonbridge ./cmd/moonbridge
+
+FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /app
+COPY --from=builder /out/moonbridge /app/moonbridge
 
-# Установка системных зависимостей
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Копирование requirements и установка зависимостей
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Копирование приложения
-COPY . .
-
-# Создание директории для данных
-RUN mkdir -p /app/data
-
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 38440
+USER nonroot:nonroot
+ENTRYPOINT ["/app/moonbridge"]
+CMD ["-config", "/config/config.yml", "-addr", "0.0.0.0:38440"]

@@ -1,47 +1,38 @@
-.PHONY: help build up down restart logs clean install test
+.PHONY: help init build up down restart logs ps health test shell clean
 
-help: ## Показать эту справку
-	@echo "MoonProxy Docker - Команды управления"
-	@echo ""
+help: ## Показать справку
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-build: ## Собрать Docker образ
-	docker-compose build
+init: ## Создать локальный конфиг из шаблона
+	@mkdir -p config data logs trace
+	@if [ ! -f config/config.yml ]; then cp config/config.example.yml config/config.yml; echo "Создан config/config.yml; внесите Z.ai API key и затем запустите make up."; else echo "config/config.yml уже существует."; fi
 
-up: ## Запустить сервисы
-	docker-compose up -d
+build: ## Собрать Moon Bridge image
+	docker compose build
 
-down: ## Остановить сервисы
-	docker-compose down
+up: ## Запустить proxy
+	docker compose up -d
 
-restart: ## Перезапустить сервисы
-	docker-compose restart
+down: ## Остановить proxy
+	docker compose down
 
-logs: ## Показать логи сервисов
-	docker-compose logs -f moonproxy
+restart: ## Перезапустить proxy
+	docker compose restart
 
-clean: ## Остановить и удалить контейнеры, сети и образы
-	docker-compose down -v --rmi all
+logs: ## Показать логи proxy
+	docker compose logs -f moonbridge
 
-install: ## Установить зависимости локально
-	pip install -r requirements.txt
+ps: ## Показать статус контейнера
+	docker compose ps
 
-test: ## Запустить тесты
-	python -m pytest tests/
+health: ## Проверить валидность активного конфига
+	docker compose exec moonbridge /app/moonbridge -config /config/config.yml -print-addr
 
-dev: ## Запустить в режиме разработки
-	uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+test: ## Запустить upstream proxy tests
+	cd moon-bridge && go test ./internal/service/proxy
 
-shell: ## Открыть shell в контейнере
-	docker-compose exec moonproxy /bin/bash
+shell: ## Запустить разовую команду Moon Bridge в контейнере
+	docker compose exec moonbridge /app/moonbridge -config /config/config.yml -print-mode
 
-ps: ## Показать статус контейнеров
-	docker-compose ps
-
-health: ## Проверить здоровье сервиса
-	curl -f http://localhost:8000/health || echo "Service is not healthy"
-
-init: ## Инициализация проекта
-	@mkdir -p data config
-	@echo "Директории созданы"
-	@echo "Скопируйте .env.example в .env и настройте переменные окружения"
+clean: ## Остановить контейнеры (локальные config и данные сохраняются)
+	docker compose down --rmi local

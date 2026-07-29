@@ -1,0 +1,14 @@
+# Copy this file to config/config.yml and replace only the api_key value.
+# config/config.yml is ignored by Git and must remain on the Docker host.
+mode: CaptureAnthropic
+
+log:
+  level: info
+  format: text
+
+proxy:
+  anthropic:
+    # Z.ai's Anthropic-compatible endpoint. Do not append /v1/messages.
+    base_url: https://api.z.ai/api/anthropic
+    api_key: REPLACE_WITH_YOUR_ZAI_API_KEY
+    version: "2023-06-01"
