@@ -68,3 +68,17 @@ Only `config/config.example.yml` is committed. Create `config/config.yml` with `
 - `proxy.anthropic.version`: API version expected by the upstream.
 
 Restart the service after changes: `make restart`.
+
+## Quota dashboard
+
+`docker-compose.yml` also runs `zai-dashboard`, a small Python service (`dashboard/`) that reads
+the same `proxy.anthropic.api_key` from `config/config.yml` and renders an HTML page with the
+Z.ai Coding Plan quota — model-token pool, MCP-tool pool, reset countdown, and a peak-window
+(14:00-18:00 UTC+8) warning. It reuses the quota-fetching logic from
+[`zai-limits`](https://github.com/axisrow/zai-limits) instead of duplicating it.
+
+It listens on `127.0.0.1:8081` only — like Moon Bridge itself, it has no authentication of its
+own and relies entirely on the reverse proxy in front of it. On the Dokku deployment described
+below, the root path `/` of the public domain is routed to this dashboard (via a
+`nginx.conf.d/dashboard.conf` include) while every other path, including `/v1/messages`, keeps
+going to Moon Bridge on `38440` — both are behind the same bearer-token gate.

@@ -19,3 +19,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  zai-dashboard:
+    build: ./dashboard
+    image: moonbridge-zai-dashboard:local
+    container_name: moonbridge-zai-dashboard
+    restart: unless-stopped
+    environment:
+      - CONFIG_PATH=/config/config.yml
+    volumes:
+      - ./config/config.yml:/config/config.yml:ro
+    ports:
+      # Published to localhost only; reached externally via nginx, same as moonbridge.
+      - "127.0.0.1:8081:8081"
