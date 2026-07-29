@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  moonproxy:
+    build: .
+    container_name: moonproxy
+    ports:
+      - "8000:8000"
+    environment:
+      - MOONPROXY_SECRET_KEY=your-secret-key-change-this
+      - MOONPROXY_ADMIN_PASSWORD=admin123
+      - MOONPROXY_DATABASE_URL=sqlite:///./data/moonproxy.db
+      - MOONPROXY_LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    restart: unless-stopped
+    networks:
+      - moonproxy-network
+
+networks:
+  moonproxy-network:
+    driver: bridge

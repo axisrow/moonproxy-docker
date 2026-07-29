@@ -1,0 +1,16 @@
+# MoonProxy данные
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
