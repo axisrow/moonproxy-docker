@@ -4,9 +4,9 @@
 
 No. Claude Code needs a non-empty placeholder `ANTHROPIC_API_KEY` to enter API-key mode. In CaptureAnthropic mode Moon Bridge strips client credentials and uses `proxy.anthropic.api_key` from the Docker-host configuration for the upstream request.
 
-## Why is the port open without a token?
+## Why doesn't `server.auth_token` protect the proxy?
 
-That is the requested test configuration. It is unsafe on a public or shared network because every reachable client can use the upstream key. `CaptureAnthropic` does not apply `server.auth_token` to proxy traffic, so use a firewall/VPN or an authenticated reverse proxy before production.
+`CaptureAnthropic` mode bypasses Moon Bridge's normal HTTP router entirely (that router is what enforces `auth_token`), so the field has no effect in this mode regardless of what it's set to. If you deploy the container directly with no reverse proxy in front, every client that can reach the port can use the upstream Z.ai key — bind it to localhost/a private network, or put a reverse proxy with TLS and its own bearer-token check in front of it (as the Dokku deployment in the README does).
 
 ## Which model should I choose?
 
