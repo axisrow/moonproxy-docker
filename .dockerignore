@@ -1,5 +1,4 @@
 .git
-.gitmodules
 .claude
 CLAUDE.md
 config/config.yml

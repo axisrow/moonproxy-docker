@@ -2,10 +2,8 @@ FROM golang:1.26-bookworm AS builder
 
 WORKDIR /src
 
-COPY moon-bridge/go.mod moon-bridge/go.sum ./
+RUN git clone --branch main --depth 1 https://github.com/ZhiYi-R/moon-bridge.git .
 RUN go mod download
-
-COPY moon-bridge/ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/moonbridge ./cmd/moonbridge
 
 FROM gcr.io/distroless/static-debian12:nonroot

@@ -29,7 +29,7 @@ health: ## Проверить валидность активного конфи
 	docker compose exec moonbridge /app/moonbridge -config /config/config.yml -print-addr
 
 test: ## Запустить upstream proxy tests
-	cd moon-bridge && go test ./internal/service/proxy
+	rm -rf /tmp/moon-bridge-test && git clone --branch main --depth 1 https://github.com/ZhiYi-R/moon-bridge.git /tmp/moon-bridge-test && cd /tmp/moon-bridge-test && go test ./internal/service/proxy
 
 shell: ## Запустить разовую команду Moon Bridge в контейнере
 	docker compose exec moonbridge /app/moonbridge -config /config/config.yml -print-mode

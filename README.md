@@ -1,6 +1,6 @@
 # Moon Bridge Z.ai proxy for Claude Code
 
-Docker deployment of the pinned [Moon Bridge](https://github.com/ZhiYi-R/moon-bridge) source for Claude Code. It runs Moon Bridge in `CaptureAnthropic` mode: Claude Code sends requests to this proxy with a disposable local value, and the proxy replaces it with the Z.ai key stored only on the Docker host.
+Docker deployment of [Moon Bridge](https://github.com/ZhiYi-R/moon-bridge) for Claude Code. It runs Moon Bridge in `CaptureAnthropic` mode: Claude Code sends requests to this proxy with a disposable local value, and the proxy replaces it with the Z.ai key stored only on the Docker host.
 
 ## Security boundary
 
@@ -36,7 +36,7 @@ Choose a different available Z.ai model with `claude --model ...`; Capture mode 
 ## Operations
 
 ```bash
-make build     # build from the pinned Moon Bridge submodule
+make build     # build from the Moon Bridge source (cloned at build time)
 make logs      # follow container logs
 make ps        # container status
 make restart   # restart after changing config/config.yml
@@ -44,11 +44,7 @@ make down      # stop container
 make test      # upstream tests for credential replacement and SSE proxying
 ```
 
-The Moon Bridge source is a Git submodule pinned to a specific commit. Initialise it after a fresh clone:
-
-```bash
-git submodule update --init --recursive
-```
+The Dockerfile clones Moon Bridge's `main` branch directly during the image build, so no submodule checkout is required after cloning this repository.
 
 ## Configuration
 

@@ -14,4 +14,4 @@ Use any model name enabled for your Z.ai account, for example `glm-4.7-flash`. T
 
 ## How do I update Moon Bridge?
 
-Update the `moon-bridge` submodule deliberately to a reviewed upstream commit, then rebuild with `make build` and restart the container.
+The Dockerfile clones Moon Bridge's `main` branch at build time, so `make build` picks up the latest upstream commit; pin a specific commit in the Dockerfile if you need a reviewed, reproducible version instead.
