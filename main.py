@@ -5,13 +5,33 @@ from pydantic import BaseModel
 from typing import Optional, List
 import httpx
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dtime
+from zoneinfo import ZoneInfo
 import jwt
 import hashlib
 import json
 from pathlib import Path
 
 app = FastAPI(title="MoonProxy", version="1.0.0")
+
+RESTRICTED_TZ = ZoneInfo("Asia/Shanghai")
+RESTRICTED_START = dtime(14, 0)
+RESTRICTED_END = dtime(18, 0)
+FREE_MODELS = {"glm-4.7-flash", "glm-4.5-flash", "glm-4.6v-flash"}
+
+
+def enforce_model_window(model: Optional[str]):
+    """Ограничивает доступные модели бесплатными GLM Flash в окно 14:00-18:00 UTC+8"""
+    now_local = datetime.now(RESTRICTED_TZ).time()
+    in_window = RESTRICTED_START <= now_local < RESTRICTED_END
+    if in_window and (model or "").strip().lower() not in FREE_MODELS:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"14:00-18:00 UTC+8: only free GLM Flash models are available "
+                f"(requested: {model}). Allowed: {', '.join(sorted(FREE_MODELS))}"
+            ),
+        )
 
 # CORS middleware
 app.add_middleware(
@@ -261,6 +281,8 @@ async def proxy_completion(
     # Если указана модель в токене, заменяем её
     if token_data.get('model'):
         request_data['model'] = token_data['model']
+
+    enforce_model_window(request_data.get('model'))
 
     # Отправка запроса
     async with httpx.AsyncClient() as client:
