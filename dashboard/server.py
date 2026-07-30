@@ -104,6 +104,7 @@ PAGE_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Z.AI Coding Plan — квота</title>
+<link rel="icon" href="/favicon.ico" type="image/svg+xml">
 <meta http-equiv="refresh" content="60">
 <style>
   :root {{ color-scheme: light dark; }}
@@ -203,6 +204,16 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self) -> None:  # noqa: N802
+        if self.path == "/favicon.ico":
+            # Простая SVG favicon - синий квадрат с MB
+            svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect fill="#4f7cff" width="64" height="64"/><text x="32" y="48" font-family="sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">MB</text></svg>'
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Content-Length", str(len(svg)))
+            self.end_headers()
+            self.wfile.write(svg)
+            return
+
         if self.path not in ("/", "/index.html"):
             self.send_response(404)
             self.end_headers()
